@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id // Clerk user ID
+  email     String   @unique
+  name      String?
+  plan      Plan     @default(STARTER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business?
+
+  @@map("users")
+}
+
+model Business {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name          String
+  phone         String
+  industry      Industry @default(HVAC)
+  address       String?
+  website       String?
+  twilioNumber  String?
+  googlePlaceId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  automations    Automation[]
+  callEvents     CallEvent[]
+  reviewRequests ReviewRequest[]
+  bookings       Booking[]
+
+  @@map("businesses")
+}
+
+model Automation {
+  id         String @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  type    AutomationType
+  enabled Boolean        @default(false)
+  config  Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, type])
+  @@map("automations")
+}
+
+model CallEvent {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  callerPhone String
+  callStatus  CallStatus
+  textSent    Boolean    @default(false)
+  textSentAt  DateTime?
+  occurredAt  DateTime   @default(now())
+
+  @@map("call_events")
+}
+
+model ReviewRequest {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  status        ReviewStatus @default(PENDING)
+  sentAt        DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@map("review_requests")
+}
+
+model Booking {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  serviceType   String
+  scheduledAt   DateTime
+  status        BookingStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("bookings")
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  PRO
+}
+
+enum Industry {
+  HVAC
+  PLUMBING
+  ROOFING
+  ELECTRICAL
+  LANDSCAPING
+  OTHER
+}
+
+enum AutomationType {
+  MISSED_CALL_TEXTBACK
+  REVIEW_REQUEST
+  BOOKING_CONFIRMATION
+  FOLLOW_UP_SEQUENCE
+}
+
+enum CallStatus {
+  MISSED
+  ANSWERED
+  VOICEMAIL
+}
+
+enum ReviewStatus {
+  PENDING
+  SENT
+  CLICKED
+  REVIEWED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
