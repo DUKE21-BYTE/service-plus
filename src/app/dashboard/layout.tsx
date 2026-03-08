@@ -2,6 +2,9 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import {
   LayoutDashboard,
   Phone,
@@ -21,11 +24,17 @@ const navItems = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  // Check if user has a business set up
+  const business = await db.business.findFirst({ where: { userId } });
+  if (!business) redirect("/onboarding");
 
   return (
     <div className="flex h-screen bg-[#020817]">
@@ -41,8 +50,16 @@ export default function DashboardLayout({
           </Link>
         </div>
 
+        {/* Business name badge */}
+        <div className="px-4 pt-4 pb-2">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2">
+            <p className="text-xs text-slate-500 mb-0.5">Active business</p>
+            <p className="text-sm font-semibold text-white truncate">{business.name}</p>
+          </div>
+        </div>
+
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
           {navItems.map(({ label, href, icon: Icon }) => (
             <Link
               key={href}
@@ -66,7 +83,7 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
         <header className="h-16 flex items-center justify-between px-6 glass-card border-b border-white/5 flex-shrink-0">
-          <h1 className="text-lg font-semibold text-white">Dashboard</h1>
+          <h1 className="text-lg font-semibold text-white">{business.name}</h1>
           <div className="flex items-center gap-3">
             <span className="text-xs text-green-400 bg-green-400/10 border border-green-400/20 px-3 py-1 rounded-full font-medium">
               ● Live
